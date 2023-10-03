@@ -18,19 +18,25 @@ import (
 var userCollection *mongo.Collection = configs.GetCollection(configs.DB, "users")
 var validate = validator.New()
 
+func ValidateReqBody(user *models.User, c echo.Context) error {
+	if err := c.Bind(&user); err != nil {
+		return Error(c, err, http.StatusBadRequest)
+	}
+
+	if err := validate.Struct(&user); err != nil {
+		return Error(c, err, http.StatusBadRequest)
+	}
+	return nil
+}
+
 func CreateUser(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 	var user models.User
 	defer cancel()
 
-	//Validate the request body
-	if err := c.Bind(&user); err != nil {
-		return Error(c, err, http.StatusBadRequest)
-	}
-
-	if validationErr := validate.Struct(&user); validationErr != nil {
-		return Error(c, validationErr, http.StatusBadRequest)
+	if err := ValidateReqBody(&user, c); err != nil {
+		return err
 	}
 
 	newUser := models.User{
@@ -74,14 +80,8 @@ func EditUser(c echo.Context) error {
 
 	objId, _ := primitive.ObjectIDFromHex(userId)
 
-	//validate the request body
-	if err := c.Bind(&user); err != nil {
-		return Error(c, err, http.StatusBadRequest)
-	}
-
-	//use the validator library to validate required fields
-	if validationErr := validate.Struct(&user); validationErr != nil {
-		return Error(c, validationErr, http.StatusBadRequest)
+	if err := ValidateReqBody(&user, c); err != nil {
+		return err
 	}
 
 	update := bson.M{
